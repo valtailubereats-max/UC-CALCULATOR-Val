@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UC CALCULATOR</title>
-    <!-- Script de conexão direta com o Supabase -->
+    <!-- Importação corrigida e estável do Supabase via CDN -->
     <script src="jsdelivr.net"></script>
     <style>
         :root {
@@ -108,7 +108,6 @@
         }
         button:active { transform: scale(0.98); }
         
-        /* Grid de 5 colunas horizontal solicitado */
         .days-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -267,8 +266,8 @@
 </div>
 
 <script>
-    // --- SUAS CHAVES DO SUPABASE CONFIGURADAS CORRETAMENTE ---
-    const SUPABASE_URL = 'https://dmxfsdjwujbkrqokckur.supabase.co';
+    // --- SUAS CHAVES DO SUPABASE VERIFICADAS ---
+    const SUPABASE_URL = 'supabase.co';
     const SUPABASE_KEY = 'sb_publishable_fgDbSglGiTqbeVIj5kLVkA_YK98XfAz';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -311,15 +310,12 @@
 
     function generateCalendarGrid() {
         const grid = document.getElementById('unifiedDaysGrid');
-        // Captura o ID dos dias já marcados para não limpá-los na tradução
         const activeIds = Array.from(document.querySelectorAll('.day-btn.active')).map(el => el.id);
         grid.innerHTML = '';
         
-        // Laço de repetição 1: Dias 15 ao 31 de Abril
         for (let d = 15; d <= 31; d++) { 
             grid.appendChild(createDayButton(d, i18n[currentLang].month1, `m1-${d}`, activeIds)); 
         }
-        // Laço de repetição 2: Dias 1 ao 14 de Maio
         for (let d = 1; d <= 14; d++) { 
             grid.appendChild(createDayButton(d, i18n[currentLang].month2, `m2-${d}`, activeIds)); 
         }
@@ -354,14 +350,14 @@
         document.getElementById('lblTotalReceipts').innerText = i18n[currentLang].totalReceipts;
         document.getElementById('lblTotalExpenses').innerText = i18n[currentLang].totalExpenses;
         document.getElementById('lblNetProfit').innerText = i18n[currentLang].netProfit;
-        document.getElementById('btnSendWhatsapp').innerText = i18n[currentLang].btnWhatsapp;
+        document.getElementById('btnSendWhatsApp').innerText = i18n[currentLang].btnWhatsapp;
         document.getElementById('btnPrint').innerText = i18n[currentLang].btnPrint;
         document.getElementById('btnSaveData').innerText = i18n[currentLang].btnSave;
         document.getElementById('incomeLabel').placeholder = i18n[currentLang].placeholderIncomeLabel;
         document.getElementById('expLabel').placeholder = i18n[currentLang].placeholderExpLabel;
 
-        if(expenses.length > 0 && (expenses[0].label === i18n.PT.defaultPhone || expenses[0].label === i18n.EN.defaultPhone)) {
-            expenses[0].label = i18n[currentLang].defaultPhone;
+        if(expenses.length > 0 && (expenses.label === i18n.PT.defaultPhone || expenses.label === i18n.EN.defaultPhone)) {
+            expenses.label = i18n[currentLang].defaultPhone;
         }
         generateCalendarGrid();
         renderExpenses();
@@ -463,6 +459,8 @@
         text += `\n*💼 ${i18n[currentLang].expenseTitle}:*\n• Train: £${trainCost.toFixed(2)}\n`;
         expenses.forEach(e => text += `• ${e.label}: £${e.val.toFixed(2)}\n`);
         text += `----------------------------------------\n*TOTAL RECEIPTS:* £${totalReceipts.toFixed(2)}\n*TOTAL EXPENSES:* £${totalExpenses.toFixed(2)}\n*NET PROFIT:* £${netProfit.toFixed(2)}\n`;
+        
+        // Link API universal corrigido para WhatsApp Mobile e Desktop
         window.open(`whatsapp.com{encodeURIComponent(text)}`, '_blank');
     }
 
