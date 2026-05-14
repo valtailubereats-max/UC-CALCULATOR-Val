@@ -316,7 +316,7 @@
 </div>
 
 <script>
-    const SUPABASE_URL = 'https://vpumxmewnmnoabhyprwu.supabase.co';
+    const SUPABASE_URL = 'supabase.co';
     const SUPABASE_KEY = 'sb_publishable_fgDbSglGiTqbeVIj5kLVkA_YK98XfAz';
 
     let currentLang = 'PT';
@@ -359,18 +359,18 @@
     };
 
     function initApp() {
-        // Carrega dados salvos semanalmente do localStorage
+        // Recupera ganhos acumulados na semana
         const savedIncomes = localStorage.getItem('uc_incomes');
-        const savedExpenses = localStorage.getItem('uc_expenses');
-        
         incomes = savedIncomes ? JSON.parse(savedIncomes) : [];
-        
+
+        // Recupera despesas acumuladas na semana
+        const savedExpenses = localStorage.getItem('uc_expenses');
         if (savedExpenses) {
             expenses = JSON.parse(savedExpenses);
         } else {
             expenses = [{ label: i18n[currentLang].defaultPhone, val: 7.00 }];
         }
-        
+
         generateCalendarGrid();
         renderExpenses();
         renderIncomes();
@@ -379,19 +379,16 @@
 
     function generateCalendarGrid() {
         const grid = document.getElementById('unifiedDaysGrid');
-        
-        // Recupera os dias marcados salvos no localStorage
         const savedActiveDays = localStorage.getItem('uc_active_days');
         const activeIds = savedActiveDays ? JSON.parse(savedActiveDays) : [];
-        
         grid.innerHTML = '';
         
         for (let d = 15; d <= 30; d++) { 
-            grid.appendChild(createDayButton(d, i18n[currentLang].month1, `m1-\${d}`, activeIds, true)); 
+            grid.appendChild(createDayButton(d, i18n[currentLang].month1, `m1-${d}`, activeIds, true)); 
         }
         for (let d = 1; d <= 14; d++) { 
             const isPast = d < todayDay;
-            grid.appendChild(createDayButton(d, i18n[currentLang].month2, `m2-\${d}`, activeIds, isPast)); 
+            grid.appendChild(createDayButton(d, i18n[currentLang].month2, `m2-${d}`, activeIds, isPast)); 
         }
         calculate();
     }
@@ -400,14 +397,13 @@
         const btn = document.createElement('div');
         btn.className = 'day-btn';
         btn.id = id;
-        btn.innerHTML = `<span class="num">\({day}</span><span class="month">\){monthName}</span><span class="tag">Day Off</span>`;
+        btn.innerHTML = `<span class="num">${day}</span><span class="month">${monthName}</span><span class="tag">Day Off</span>`;
         
         if (isPast) { btn.classList.add('past-off'); }
         if (activeIds.includes(id)) { btn.classList.add('active'); }
         
         btn.onclick = () => { 
             btn.classList.toggle('active'); 
-            // Salva o estado atualizado dos dias no localStorage
             const updatedActiveIds = Array.from(document.querySelectorAll('.day-btn.active')).map(el => el.id);
             localStorage.setItem('uc_active_days', JSON.stringify(updatedActiveIds));
             calculate(); 
@@ -433,7 +429,7 @@
         document.getElementById('lblTotalReceipts').innerText = i18n[currentLang].totalReceipts;
         document.getElementById('lblTotalExpenses').innerText = i18n[currentLang].totalExpenses;
         document.getElementById('lblNetProfit').innerText = i18n[currentLang].netProfit;
-        document.getElementById('btnSendWhatsapp').innerText = i18n[currentLang].btnWhatsapp;
+        document.getElementById('btnSendWallpaper' ? 'btnSendWallpaper' : 'btnSendWhatsapp').innerText = i18n[currentLang].btnWhatsapp;
         document.getElementById('btnPrint').innerText = i18n[currentLang].btnPrint;
         document.getElementById('btnSaveData').innerText = i18n[currentLang].btnSave;
         document.getElementById('btnSendEmail').innerText = i18n[currentLang].btnEmail;
@@ -441,7 +437,7 @@
         document.getElementById('incomeLabel').placeholder = i18n[currentLang].placeholderIncomeLabel;
         document.getElementById('expLabel').placeholder = i18n[currentLang].placeholderExpLabel;
 
-        // BUG DO ARRAY CORRIGIDO ACESSANDO O ÍNDICE CORRETO [0]
+        // Correção de Bug do Array de Despesas integrada
         if (expenses.length > 0 && (expenses[0].label === i18n.PT.defaultPhone || expenses[0].label === i18n.EN.defaultPhone)) {
             expenses[0].label = i18n[currentLang].defaultPhone;
             localStorage.setItem('uc_expenses', JSON.stringify(expenses));
@@ -456,8 +452,10 @@
         const label = document.getElementById('incomeLabel').value.trim() || (currentLang === 'PT' ? "Ganho" : "Income");
         const val = parseFloat(document.getElementById('incomeVal').value);
         if (isNaN(val) || val <= 0) return alert(currentLang === 'PT' ? "Valor inválido" : "Invalid value");
+        
         incomes.push({ label, val });
-        localStorage.setItem('uc_incomes', JSON.stringify(incomes));
+        localStorage.setItem('uc_incomes', JSON.stringify(incomes)); // Salva no telefone
+        
         document.getElementById('incomeLabel').value = '';
         document.getElementById('incomeVal').value = '';
         renderIncomes();
@@ -475,7 +473,11 @@
         const list = document.getElementById('incomeList');
         list.innerHTML = '';
         incomes.forEach((inc, i) => {
-            list.innerHTML += `<div class="list-item"><span>💰 \${inc.label}: <b>£\({inc.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeIncome(\){i})">×</span></div>`;
+            list.innerHTML += `
+                <div class="list-item">
+                    <span>💰 ${inc.label}: <b>£${inc.val.toFixed(2)}</b></span>
+                    <span class="remove-btn" onclick="removeIncome(${i})">×</span>
+                </div>`;
         });
     }
 
@@ -483,8 +485,10 @@
         const label = document.getElementById('expLabel').value.trim();
         const val = parseFloat(document.getElementById('expVal').value);
         if (!label || isNaN(val) || val <= 0) return alert(currentLang === 'PT' ? "Preencha os campos" : "Invalid fields");
+        
         expenses.push({ label, val });
-        localStorage.setItem('uc_expenses', JSON.stringify(expenses));
+        localStorage.setItem('uc_expenses', JSON.stringify(expenses)); // Salva no telefone
+        
         document.getElementById('expLabel').value = '';
         document.getElementById('expVal').value = '';
         renderExpenses();
@@ -502,20 +506,24 @@
         const list = document.getElementById('expenseList');
         list.innerHTML = '';
         expenses.forEach((exp, i) => {
-            list.innerHTML += `<div class="list-item"><span>💼 \${exp.label}: <b>£\({exp.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeExpense(\){i})">×</span></div>`;
+            list.innerHTML += `
+                <div class="list-item">
+                    <span>💼 ${exp.label}: <b>£${exp.val.toFixed(2)}</b></span>
+                    <span class="remove-btn" onclick="removeExpense(${i})">×</span>
+                </div>`;
         });
     }
 
     function calculate() {
         const activeBoxes = document.querySelectorAll('.day-btn.active').length;
         const trainCost = activeBoxes * 6.00;
-        document.getElementById('resDays').innerText = `\${activeBoxes} \({i18n[currentLang].daysText} (£\){trainCost.toFixed(2)})`;
+        document.getElementById('resDays').innerText = `${activeBoxes} ${i18n[currentLang].daysText} (£${trainCost.toFixed(2)})`;
         const totalReceipts = incomes.reduce((sum, inc) => sum + inc.val, 0);
         const totalExpenses = trainCost + expenses.reduce((sum, exp) => sum + exp.val, 0);
         const netProfit = totalReceipts - totalExpenses;
-        document.getElementById('resReceipts').innerText = `£\${totalReceipts.toFixed(2)}`;
-        document.getElementById('resExpenses').innerText = `£\${totalExpenses.toFixed(2)}`;
-        document.getElementById('resNet').innerText = `£\${netProfit.toFixed(2)}`;
+        document.getElementById('resReceipts').innerText = `£${totalReceipts.toFixed(2)}`;
+        document.getElementById('resExpenses').innerText = `£${totalExpenses.toFixed(2)}`;
+        document.getElementById('resNet').innerText = `£${netProfit.toFixed(2)}`;
     }
 
     async function saveToSupabase() {
@@ -537,11 +545,11 @@
         };
 
         try {
-            const response = await fetch(`\${SUPABASE_URL}/rest/v1/uc_reports`, {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/uc_reports`, {
                 method: 'POST',
                 headers: {
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer \${SUPABASE_KEY}`,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
                     'Content-Type': 'application/json',
                     'Prefer': 'return=minimal'
                 },
@@ -550,10 +558,11 @@
 
             if (response.ok) { 
                 alert(i18n[currentLang].saveSuccess);
-                // Quando o mês fecha e salva na nuvem, limpa o localStorage para o mês seguinte
+                
+                // Limpa o acúmulo da semana apenas após enviar com sucesso o fechamento do mês
+                localStorage.removeItem('uc_active_days');
                 localStorage.removeItem('uc_incomes');
                 localStorage.removeItem('uc_expenses');
-                localStorage.removeItem('uc_active_days');
                 initApp();
             } 
             else {
@@ -566,11 +575,11 @@
     async function loadHistoryFromSupabase() {
         const container = document.getElementById('historyList');
         try {
-            const response = await fetch(`\${SUPABASE_URL}/rest/v1/uc_reports?order=created_at.desc`, {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/uc_reports?order=created_at.desc`, {
                 method: 'GET',
                 headers: {
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer \${SUPABASE_KEY}`
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
                 }
             });
 
@@ -586,11 +595,10 @@
                     const formattedDate = dateObj.toLocaleDateString(currentLang === 'PT' ? 'pt-BR' : 'en-GB');
                     container.innerHTML += `
                         <div class="history-item">
-                            <span class="history-date">📅 \${formattedDate}</span>
-                            <span>🚂 \${item.train_days}d</span>
-                            <span class="history-profit">Profit: £\${Number(item.net_profit).toFixed(2)}</span>
-                        </div>
-                    `;
+                            <span class="history-date">📅 ${formattedDate}</span>
+                            <span>🚂 ${item.train_days}d</span>
+                            <span class="history-profit">Profit: £${Number(item.net_profit).toFixed(2)}</span>
+                        </div>`;
                 });
             } else { container.innerText = "Error loading history."; }
         } catch (err) { container.innerText = "Connection error."; }
@@ -603,11 +611,20 @@
         const totalExpenses = trainCost + expenses.reduce((sum, exp) => sum + exp.val, 0);
         const netProfit = totalReceipts - totalExpenses;
 
-        let text = `📊 UC REPORT - UNIVERSAL CREDIT\n----------------------------------------\n`;
-        text += `🚂 \({i18n[currentLang].transportTitle}:\){activeBoxes} \({i18n[currentLang].daysText} = £\){trainCost.toFixed(2)}\n\n`;
-        text += `💰 \${i18n[currentLang].incomeTitle}:\n`;
-        if(incomes.length === 0) text += `• None / Nenhum\n`;
-        incomes.forEach(i => text += `• \({i.label}: £\){i.val.toFixed(2)}\n`);
-        text += `\n💼 \({i18n[currentLang].expenseTitle}:\n• Train: £\){trainCost.toFixed(2)}\n`;
-        expenses.forEach(e => text += `• \({e.label}: £\){e.val.toFixed(2)}\n`);
-        text += `----------------
+        let text = `📊 UC REPORT - UNIVERSAL CREDIT\n----------------------------------------\n\n`;
+        text += `🚂 ${i18n[currentLang].transportTitle}\n• ${activeBoxes} ${i18n[currentLang].daysText}\n• £${trainCost.toFixed(2)}\n\n`;
+        text += `💰 ${i18n[currentLang].incomeTitle}\n`;
+        if (incomes.length === 0) { text += `• None / Nenhum\n`; }
+        incomes.forEach(i => { text += `• ${i.label}: £${i.val.toFixed(2)}\n`; });
+        text += `\n💼 ${i18n[currentLang].expenseTitle}\n`;
+        expenses.forEach(e => { text += `• ${e.label}: £${e.val.toFixed(2)}\n`; });
+        text += `\n----------------------------------------\nTOTAL RECEIPTS: £${totalReceipts.toFixed(2)}\nTOTAL EXPENSES: £${totalExpenses.toFixed(2)}\nNET PROFIT: £${netProfit.toFixed(2)}\n`;
+        return text;
+    }
+
+    // Correções de links e window.location aplicados para máxima compatibilidade móvel
+    function sendEmail() {
+        const bodyText = generatePlainTextReport();
+        const subject = i18n[currentLang].emailSubject;
+        const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+        window.location.
