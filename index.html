@@ -406,9 +406,15 @@
         document.getElementById('incomeLabel').placeholder = i18n[currentLang].placeholderIncomeLabel;
         document.getElementById('expLabel').placeholder = i18n[currentLang].placeholderExpLabel;
 
-        if(expenses.length > 0 && (expenses.label === i18n.PT.defaultPhone || expenses.label === i18n.EN.defaultPhone)) {
-            expenses.label = i18n[currentLang].defaultPhone;
-        }
+       if (
+    expenses.length > 0 &&
+    (
+        expenses[0].label === i18n.PT.defaultPhone ||
+        expenses[0].label === i18n.EN.defaultPhone
+    )
+) {
+    expenses[0].label = i18n[currentLang].defaultPhone;
+}
         generateCalendarGrid();
         renderExpenses();
         renderIncomes();
@@ -533,19 +539,24 @@
     }
 
     function sendEmail() {
-        const bodyText = generatePlainTextReport();
-        const subject = i18n[currentLang].emailSubject;
-        // Abre o app de email padrão do celular imediatamente
-        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
-    }
+    const bodyText = generatePlainTextReport();
+    const subject = i18n[currentLang].emailSubject;
+
+    const mailtoLink =
+        `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+
+    window.open(mailtoLink, '_self');
+}
 
     function sendWhatsApp() {
-        const text = generatePlainTextReport();
-        // Link alternativo usando wa.me para forçar o direcionamento em qualquer celular
-        window.open(`wa.me{encodeURIComponent(text)}`, '_blank');
-    }
+    const text = generatePlainTextReport();
 
-    window.onload = initApp;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+    window.location.href = url;
+}
+
+  window.onload = initApp;
 </script>
 </body>
 </html>
