@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UC CALCULATOR</title>
+    <style>
+        :root {
+            --primary: #005a36;
+            --secondary: #ff9f43;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --card-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            --float-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #eef2f3;
+            color: var(--dark);
+            margin: 0;
+            padding: 10px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 10px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: var(--float-shadow);
+            position: relative;
+        }
+        .header-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: var(--primary);
+            margin: 0;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+        .lang-btn {
+            background: var(--light);
+            color: var(--dark);
+            border: 1px solid #ced4da;
+            padding: 6px 12px;
+            font-size: 14px;
+            border-radius: 20px;
+            width: auto;
+            box-shadow: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: bold;
+        }
+        h3 {
+            color: var(--primary);
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .section {
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: #495057;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 16px;
+            background-color: var(--light);
+        }
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            width: 100%;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 3px 6px rgba(0,90,54,0.2);
+            -webkit-tap-highlight-color: transparent;
+        }
+        button:active { transform: scale(0.98); }
+        
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .day-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            border: 1px solid #e9ecef;
+            padding: 10px 2px;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: var(--card-shadow);
+            transition: all 0.2s;
+        }
+        .day-btn .num { font-size: 18px; font-weight: 700; color: #2b2d42; }
+        .day-btn .month { font-size: 13px; font-weight: 600; text-transform: uppercase; color: #6c757d; margin-top: 2px; }
+        
+        .day-btn.active {
+            background: linear-gradient(135deg, var(--secondary), #f39c12);
+            border-color: transparent;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(255, 159, 67, 0.4);
+        }
+        .day-btn.active .num, .day-btn.active .month { color: white; }
+
+        .list-item {
+            background: var(--light);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #e9ecef;
+        }
+        .remove-btn { color: #dc3545; font-weight: bold; font-size: 18px; cursor: pointer; padding: 0 10px; }
+        
+        .result-box {
+            background: linear-gradient(135deg, #e6f4ea, #d4edda);
+            border-left: 6px solid var(--primary);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+        .result-row { display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 6px; }
+        .highlight { font-weight: 700; font-size: 18px; color: var(--primary); }
+
+        .action-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn-whatsapp { background-color: #25d366; box-shadow: 0 3px 6px rgba(37,211,102,0.3); }
+        .btn-print { background-color: #4a5568; box-shadow: 0 3px 6px rgba(74,85,104,0.3); }
+
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm 10mm 10mm 10mm;
+            }
+            body { 
+                background: white; 
+                padding: 0;
+                zoom: 82%; 
+            }
+            .container { 
+                box-shadow: none; 
+                max-width: 100%; 
+                padding: 0; 
+                margin: 0;
+            }
+            .action-area, .lang-btn, .remove-btn, button[type="button"] { 
+                display: none !important; 
+            }
+            input, select {
+                background: none !important;
+                border: 1px solid #aaa !important;
+            }
+            .day-btn.active { 
+                background: #ff9f43 !important; 
+                color: white !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            .result-box { 
+                background: #e6f4ea !important; 
+                border-left: 6px solid #005a36 !important;
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-area">
+        <h2>UC CALCULATOR</h2>
+        <button class="lang-btn" onclick="toggleLanguage()">🌐 <span id="langLabel">Português 🇧🇷</span></button>
+    </div>
+    
+    <!-- TRANSPORTE -->
+    <div class="section">
+        <h3 id="txtTransportTitle">Transporte (ida e volta)</h3>
+        <label id="txtTransportSub">Selecione as datas em que pegou trem (£6.00 ida/volta):</label>
+        <div class="days-grid" id="unifiedDaysGrid"></div>
+    </div>
+
+    <!-- RENDIMENTOS -->
+    <div class="section">
+        <h3 id="txtIncomeTitle">Ganhos Recebidos no Período</h3>
+        <div class="row">
+            <div style="flex: 2;">
+                <label id="lblSource">Origem</label>
+                <input type="text" id="incomeLabel" placeholder="Ex: Semana 15">
+            </div>
+            <div style="flex: 1;">
+                <label id="lblAmount1">Valor (£)</label>
+                <input type="number" id="incomeVal" step="0.01" placeholder="0.00">
+            </div>
+        </div>
+        <button type="button" id="btnAddIncome" onclick="addIncome()">+ Adicionar Ganho</button>
+        <div id="incomeList" style="margin-top: 8px;"></div>
+    </div>
+
+    <!-- DESPESAS EXTRA -->
+    <div class="section">
+        <h3 id="txtExpenseTitle">Outras Despesas (Telefone, etc)</h3>
+        <div class="row">
+            <div style="flex: 2;">
+                <label id="lblItem">Item</label>
+                <input type="text" id="expLabel" placeholder="Ex: Telefone">
+            </div>
+            <div style="flex: 1;">
+                <label id="lblAmount2">Valor (£)</label>
+                <input type="number" id="expVal" step="0.01" placeholder="0.00">
+            </div>
+        </div>
+        <button type="button" id="btnAddExpense" onclick="addExpense()" style="background-color: #555;">+ Adicionar Despesa</button>
+        <div id="expenseList" style="margin-top: 8px;"></div>
+    </div>
+
+    <!-- RESUMO FINAL -->
+    <div class="result-box">
+        <h3 id="txtSummaryTitle">Resumo para o Universal Credit</h3>
+        <div class="result-row">
+            <span id="lblTrainActivated">Dias de Trem Ativados:</span>
+            <span id="resDays" style="font-weight: 700;">0 dias (£0.00)</span>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #c3e6cb; margin: 8px 0;">
+        <div class="result-row highlight">
+            <span id="lblTotalReceipts">Total Receipts (Ganhos):</span>
+            <span id="resReceipts">£0.00</span>
+        </div>
+        <div class="result-row highlight">
+            <span id="lblTotalExpenses">Total Expenses (Despesas):</span>
+            <span id="resExpenses">£0.00</span>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #c3e6cb; margin: 8px 0;">
+        <div class="result-row" style="font-weight: 800; font-size: 19px; color: #000;">
+            <span id="lblNetProfit">Lucro Líquido Real:</span>
+            <span id="resNet">£0.00</span>
+        </div>
+    </div>
+
+    <!-- BOTÕES DE AÇÃO -->
+    <div class="action-area">
+        <button class="btn-whatsapp" onclick="sendWhatsApp()" id="btnSendWhatsapp">Enviar WhatsApp</button>
+        <button class="btn-print" onclick="window.print()" id="btnPrint">Imprimir / PDF</button>
+    </div>
+</div>
+
+<script>
+    let currentLang = 'PT';
+    let incomes = [];
+    let expenses = [];
+    
+    const i18n = {
+        PT: {
+            langLabel: "Português 🇧🇷",
+            transportTitle: "Transporte (ida e volta)",
+            transportSub: "Selecione as datas em que pegou trem (£6.00 ida/volta):",
+            incomeTitle: "Ganhos Recebidos no Período",
+            source: "Origem", amount: "Valor (£)", addIncome: "+ Adicionar Ganho",
+            expenseTitle: "Outras Despesas (Telefone, etc)",
+            item: "Item", addExpense: "+ Adicionar Despesa",
+            summaryTitle: "Resumo para o Universal Credit",
+            trainActivated: "Dias de Trem Ativados:",
+            totalReceipts: "Total Receipts (Ganhos):",
+            totalExpenses: "Total Expenses (Despesas):",
+            netProfit: "Lucro Líquido Real:",
+            btnWhatsapp: "Enviar WhatsApp", btnPrint: "Imprimir / PDF",
+            defaultPhone: "Telefone / Internet Profissional",
+            placeholderIncomeLabel: "Ex: Semana 15",
+            placeholderExpLabel: "Ex: Telefone",
+            daysText: "dias",
+            month1: "Abr", month2: "Mai"
+        },
+        EN: {
+            langLabel: "English 🇬🇧",
+            transportTitle: "Transport (Return)",
+            transportSub: "Select the dates you took the train (£6.00 return):",
+            incomeTitle: "Income Received in the Period",
+            source: "Source", amount: "Amount (£)", addIncome: "+ Add Income",
+            expenseTitle: "Other Expenses (Phone, etc)",
+            item: "Item", addExpense: "+ Add Expense",
+            summaryTitle: "Summary for Universal Credit",
+            trainActivated: "Train Days Activated:",
+            totalReceipts: "Total Receipts (Income):",
+            totalExpenses: "Total Expenses:",
+            netProfit: "Estimated Net Profit:",
+            btnWhatsapp: "Send WhatsApp", btnPrint: "Print / PDF",
+            defaultPhone: "Business Phone / Internet",
+            placeholderIncomeLabel: "Ex: Week 15",
+            placeholderExpLabel: "Ex: Phone Bill",
+            daysText: "days",
+            month1: "Apr", month2: "May"
+        }
+    };
+
+    function initApp() {
+        expenses = [{ label: i18n[currentLang].defaultPhone, val: 7.00 }];
+        generateCalendarGrid();
+    }
+
+    function generateCalendarGrid() {
+        const grid = document.getElementById('unifiedDaysGrid');
+        const activeIds = Array.from(document.querySelectorAll('.day-btn.active')).map(el => el.id);
+        grid.innerHTML = '';
+        
+        for (let d = 15; d <= 31; d++) { grid.appendChild(createDayButton(d, i18n[currentLang].month1, `m1-${d}`, activeIds)); }
+        for (let d = 1; d <= 14; d++) { grid.appendChild(createDayButton(d, i18n[currentLang].month2, `m2-${d}`, activeIds)); }
+        calculate();
+    }
+
+    function createDayButton(day, monthName, id, activeIds) {
+        const btn = document.createElement('div');
+        btn.className = 'day-btn';
+        btn.id = id;
+        btn.innerHTML = `<span class="num">${day}</span><span class="month">${monthName}</span>`;
+        if (activeIds.includes(id)) { btn.classList.add('active'); }
+        btn.onclick = () => { btn.classList.toggle('active'); calculate(); };
+        return btn;
+    }
+
+    function toggleLanguage() {
+        currentLang = currentLang === 'PT' ? 'EN' : 'PT';
+        
+        document.getElementById('langLabel').innerText = i18n[currentLang].langLabel;
+        document.getElementById('txtTransportTitle').innerText = i18n[currentLang].transportTitle;
+        document.getElementById('txtTransportSub').innerText = i18n[currentLang].transportSub;
+        document.getElementById('txtIncomeTitle').innerText = i18n[currentLang].incomeTitle;
+        document.getElementById('lblSource').innerText = i18n[currentLang].source;
+        document.getElementById('lblAmount1').innerText = i18n[currentLang].amount;
+        document.getElementById('btnAddIncome').innerText = i18n[currentLang].addIncome;
+        document.getElementById('txtExpenseTitle').innerText = i18n[currentLang].expenseTitle;
+        document.getElementById('lblItem').innerText = i18n[currentLang].item;
+        document.getElementById('lblAmount2').innerText = i18n[currentLang].amount;
+        document.getElementById('btnAddExpense').innerText = i18n[currentLang].addExpense;
+        document.getElementById('txtSummaryTitle').innerText = i18n[currentLang].summaryTitle;
+        document.getElementById('lblTrainActivated').innerText = i18n[currentLang].trainActivated;
+        document.getElementById('lblTotalReceipts').innerText = i18n[currentLang].totalReceipts;
+        document.getElementById('lblTotalExpenses').innerText = i18n[currentLang].totalExpenses;
+        document.getElementById('lblNetProfit').innerText = i18n[currentLang].netProfit;
+        document.getElementById('btnSendWhatsapp').innerText = i18n[currentLang].btnWhatsapp;
+        document.getElementById('btnPrint').innerText = i18n[currentLang].btnPrint;
+        
+        document.getElementById('incomeLabel').placeholder = i18n[currentLang].placeholderIncomeLabel;
+        document.getElementById('expLabel').placeholder = i18n[currentLang].placeholderExpLabel;
+
+        if(expenses.length > 0 && (expenses.label === i18n.PT.defaultPhone || expenses.label === i18n.EN.defaultPhone)) {
+            expenses.label = i18n[currentLang].defaultPhone;
+        }
+
+        generateCalendarGrid();
+        renderExpenses();
+        renderIncomes();
+    }
+
+    function addIncome() {
+        const label = document.getElementById('incomeLabel').value.trim() || (currentLang === 'PT' ? "Ganho" : "Income");
+        const val = parseFloat(document.getElementById('incomeVal').value);
+        if (isNaN(val) || val <= 0) return alert(currentLang === 'PT' ? "Insira um valor válido" : "Invalid value");
+        incomes.push({ label, val });
+        document.getElementById('incomeLabel').value = '';
+        document.getElementById('incomeVal').value = '';
+        renderIncomes();
+        calculate();
+    }
+
+    function removeIncome(index) { incomes.splice(index, 1); renderIncomes(); calculate(); }
+
+    function renderIncomes() {
+        const list = document.getElementById('incomeList');
+        list.innerHTML = '';
+        incomes.forEach((inc, i) => {
+            list.innerHTML += `<div class="list-item"><span>💰 ${inc.label}: <b>£${inc.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeIncome(${i})">×</span></div>`;
+        });
+    }
+
+    function addExpense() {
+        const label = document.getElementById('expLabel').value.trim();
+        const val = parseFloat(document.getElementById('expVal').value);
+        if (!label || isNaN(val) || val <= 0) return alert(currentLang === 'PT' ? "Insira item e valor válidos" : "Invalid fields");
+        expenses.push({ label, val });
+        document.getElementById('expLabel').value = '';
+        document.getElementById('expVal').value = '';
+        renderExpenses();
+        calculate();
+    }
+
+    function removeExpense(index) { expenses.splice(index, 1); renderExpenses(); calculate(); }
+
+    function renderExpenses() {
+        const list = document.getElementById('expenseList');
+        list.innerHTML = '';
+        expenses.forEach((exp, i) => {
+            list.innerHTML += `<div class="list-item"><span>💼 ${exp.label}: <b>£${exp.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeExpense(${i})">×</span></div>`;
+        });
+    }
+
+    function calculate() {
+        const activeBoxes = document.querySelectorAll('.day-btn.active').length;
+        const trainCost = activeBoxes * 6.00;
+        document.getElementById('resDays').innerText = `${activeBoxes} ${i18n[currentLang].daysText} (£${trainCost.toFixed(2)})`;
+
+        const totalReceipts = incomes.reduce((sum, inc) => sum + inc.val, 0);
+        const totalExpenses = trainCost + expenses.reduce((sum, exp) => sum + exp.val, 0);
+        const netProfit = totalReceipts - totalExpenses;
+
+        document.getElementById('resReceipts').innerText = `£${totalReceipts.toFixed(2)}`;
+        document.getElementById('resExpenses').innerText = `£${totalExpenses.toFixed(2)}`;
+        document.getElementById('resNet').innerText = `£${netProfit.toFixed(2)}`;
+    }
+
+    function generateReportText() {
+        const activeBoxes = document.querySelectorAll('.day-btn.active').length;
+        const trainCost = activeBoxes * 6.00;
+        const totalReceipts = incomes.reduce((sum, inc) => sum + inc.val, 0);
+        const totalExpenses = trainCost + expenses.reduce((sum, exp) => sum + exp.val, 0);
+        const netProfit = totalReceipts - totalExpenses;
+
+        let text = `*📊 UC REPORT - UNIVERSAL CREDIT*\n`;
+        text += `----------------------------------------\n`;
+        text += `*🚂 ${i18n[currentLang].transportTitle}:*\n`;
+        text += `• ${activeBoxes} ${i18n[currentLang].daysText} = £${trainCost.toFixed(2)}\n\n`;
+        
+        text += `*💰 ${i18n[currentLang].incomeTitle}:*\n`;
+        if(incomes.length === 0) text += `• None / Nenhum\n`;
+        incomes.forEach(i => text += `• ${i.label}: £${i.val.toFixed(2)}\n`);
+        
+        text += `\n*💼 ${i18n[currentLang].expenseTitle}:*\n`;
+        text += `• Train Travel: £${trainCost.toFixed(2)}\n`;
+        expenses.forEach(e => text += `• ${e.label}: £${e.val.toFixed(2)}\n`);
+        
+        text += `----------------------------------------\n`;
+        text += `*TOTAL RECEIPTS:* £${totalReceipts.toFixed(2)}\n`;
+        text += `*TOTAL EXPENSES:* £${totalExpenses.toFixed(2)}\n`;
+        text += `*NET PROFIT:* £${netProfit.toFixed(2)}\n`;
+        return encodeURIComponent(text);
+    }
+
+    function sendWhatsApp() {
+        const text = generateReportText();
+        window.open(`whatsapp.com{text}`, '_blank');
+    }
+
+    window.onload = initApp;
+</script>
+
+</body>
+</html>
