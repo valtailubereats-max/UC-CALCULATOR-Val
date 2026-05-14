@@ -209,7 +209,8 @@
         .btn-whatsapp { background-color: #25d366; box-shadow: 0 3px 6px rgba(37,211,102,0.3); }
         .btn-print { background-color: #4a5568; box-shadow: 0 3px 6px rgba(74,85,104,0.3); }
         .btn-save { background-color: #007bff; box-shadow: 0 3px 6px rgba(0,123,255,0.3); }
-        .btn-email { background-color: #dc3545; box-shadow: 0 3px 6px rgba(220,53,69,0.3); }
+        .btn-email { background-color: #9b59b6; box-shadow: 0 3px 6px rgba(155,89,182,0.3); }
+        .btn-clear { background-color: #e74c3c; box-shadow: 0 3px 6px rgba(231,76,60,0.3); margin-top: 5px; }
 
         @media print {
             @page { size: A4 portrait; margin: 8mm; }
@@ -306,6 +307,7 @@
             <button class="btn-whatsapp" onclick="sendWhatsApp()" id="btnSendWhatsapp">Enviar WhatsApp</button>
             <button class="btn-print" onclick="window.print()" id="btnPrint">Imprimir / PDF</button>
         </div>
+        <button class="btn-clear" onclick="clearCurrentMonth()" id="btnClearData">❌ Limpar Tudo (Novo Mês)</button>
     </div>
 
     <!-- SEÇÃO DE HISTÓRICO VISÍVEL -->
@@ -316,7 +318,6 @@
 </div>
 
 <script>
-    // --- COLE OS SEUS ENDEREÇOS REAIS DO SUPABASE AQUI ---
     const SUPABASE_URL = 'https://vpumxmewnmnoabhyprwu.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_fgDbSglGiTqbeVIj5kLVkA_YK98XfAz';
 
@@ -324,8 +325,6 @@
     let incomes = [];
     let expenses = [];
     
-    const todayYear = 2026;
-    const todayMonth = 4; 
     const todayDay = 14;
 
     const i18n = {
@@ -341,7 +340,8 @@
             placeholderExpLabel: "Ex: Telefone", daysText: "dias", month1: "Abr", month2: "Mai",
             btnSave: "💾 Salvar no Banco de Dados", saveSuccess: "Dados salvos com sucesso no Supabase!", saveError: "Erro ao salvar os dados.",
             btnEmail: "📧 Enviar por E-mail", emailSubject: "Relatório Universal Credit",
-            historyTitle: "Histórico de Meses Anteriores", historyEmpty: "Nenhum histórico encontrado."
+            historyTitle: "Histórico de Meses Anteriores", historyEmpty: "Nenhum histórico encontrado.",
+            btnClear: "❌ Limpar Tudo (Novo Mês)", confirmClear: "Tem certeza que deseja apagar todos os dados da tela para começar um novo mês?"
         },
         EN: {
             langLabel: "English 🇬🇧", transportTitle: "Transport (Return)",
@@ -355,75 +355,87 @@
             placeholderExpLabel: "Ex: Phone Bill", daysText: "days", month1: "Apr", month2: "May",
             btnSave: "💾 Save to Database", saveSuccess: "Data successfully saved to Supabase!", saveError: "Error saving data.",
             btnEmail: "📧 Send via Email", emailSubject: "Universal Credit Report",
-            historyTitle: "History of Previous Months", historyEmpty: "No history found."
+            historyTitle: "History of Previous Months", historyEmpty: "No history found.",
+            btnClear: "❌ Clear All (New Month)", confirmClear: "Are you sure you want to clear all screen data to start a new month?"
         }
     };
 
     function initApp() {
-        // Carrega dados salvos semanalmente da memória do celular
-        const savedIncomes = localStorage.getItem('uc_weekly_incomes');
-        const savedExpenses = localStorage.getItem('uc_weekly_expenses');
-        
-        if (savedIncomes) incomes = JSON.parse(savedIncomes);
-        if (savedExpenses) expenses = JSON.parse(savedExpenses);
-        else expenses = [{ label: i18n[currentLang].defaultPhone, val: 7.00 }];
+        // Carrega dados persistidos do LocalStorage caso existam
+        if (localStorage.getItem('uc_incomes')) {
+            incomes = JSON.parse(localStorage.getItem('uc_incomes'));
+        } else {
+            incomes = [];
+        }
+
+        if (localStorage.getItem('uc_expenses')) {
+            expenses = JSON.parse(localStorage.getItem('uc_expenses'));
+        } else {
+            expenses = [{ label: i18n[currentLang].defaultPhone, val: 7.00 }];
+        }
 
         generateCalendarGrid();
         renderExpenses();
         renderIncomes();
-        
-        // Carrega o histórico de forma protegida contra falhas de chaves
-        if (!SUPABASE_URL.includes('co')) {
-            document.getElementById('historyList').innerText = "Configure as chaves do Supabase.";
-        } else {
-            loadHistoryFromSupabase();
-        }
+        loadHistoryFromSupabase();
     }
 
     function generateCalendarGrid() {
         const grid = document.getElementById('unifiedDaysGrid');
         
-        // Recupera quais botões do trem estavam ativos no rascunho semanal
-        const savedActiveIds = localStorage.getItem('uc_weekly_active_days');
-        let activeIds = [];
-        if (savedActiveIds) activeIds = JSON.parse(savedActiveIds);
-        else activeIds = Array.from(document.querySelectorAll('.day-btn.active')).map(el => el.id);
+        // Puxa os dias salvos da memória local para remontar a tela contínua
+        let savedActiveIds = [];
+        if(localStorage.getItem('uc_active_days')) {
+            savedActiveIds = JSON.parse(localStorage.getItem('uc_active_days'));
+        }
 
         grid.innerHTML = '';
         
         for (let d = 15; d <= 30; d++) { 
-            grid.appendChild(createDayButton(d, i18n[currentLang].month1, `m1-${d}`, activeIds, true)); 
+            grid.appendChild(createDayButton(d, i18n[currentLang].month1, `m1-\${d}`, savedActiveIds, true)); 
         }
         for (let d = 1; d <= 14; d++) { 
             const isPast = d < todayDay;
-            grid.appendChild(createDayButton(d, i18n[currentLang].month2, `m2-${d}`, activeIds, isPast)); 
+            grid.appendChild(createDayButton(d, i18n[currentLang].month2, `m2-\${d}`, savedActiveIds, isPast)); 
         }
         calculate();
     }
 
-    function createDayButton(day, monthName, id, activeIds, isPast) {
+    function createDayButton(day, monthName, id, savedActiveIds, isPast) {
         const btn = document.createElement('div');
         btn.className = 'day-btn';
         btn.id = id;
-        btn.innerHTML = `<span class="num">${day}</span><span class="month">${monthName}</span><span class="tag">Day Off</span>`;
+        btn.innerHTML = `<span class="num">\({day}</span><span class="month">\){monthName}</span><span class="tag">Day Off</span>`;
         
         if (isPast) { btn.classList.add('past-off'); }
-        if (activeIds.includes(id)) { btn.classList.add('active'); }
+        if (savedActiveIds.includes(id)) { btn.classList.add('active'); }
         
         btn.onclick = () => { 
             btn.classList.toggle('active'); 
-            saveDraftToLocalStorage(); // Salva o clique do trem na mesma hora
+            saveStateToLocalStorage(); // Salva toda vez que clica no dia do trem
             calculate(); 
         };
         return btn;
     }
 
-    function saveDraftToLocalStorage() {
-        // Salva os rascunhos em tempo real para não perder os dados semanais
+    function saveStateToLocalStorage() {
         const activeIds = Array.from(document.querySelectorAll('.day-btn.active')).map(el => el.id);
-        localStorage.setItem('uc_weekly_active_days', JSON.stringify(activeIds));
-        localStorage.setItem('uc_weekly_incomes', JSON.stringify(incomes));
-        localStorage.setItem('uc_weekly_expenses', JSON.stringify(expenses));
+        localStorage.setItem('uc_active_days', JSON.stringify(activeIds));
+        localStorage.setItem('uc_incomes', JSON.stringify(incomes));
+        localStorage.setItem('uc_expenses', JSON.stringify(expenses));
+    }
+
+    function clearCurrentMonth() {
+        if(confirm(i18n[currentLang].confirmClear)) {
+            localStorage.removeItem('uc_active_days');
+            localStorage.removeItem('uc_incomes');
+            localStorage.removeItem('uc_expenses');
+            incomes = [];
+            expenses = [{ label: i18n[currentLang].defaultPhone, val: 7.00 }];
+            generateCalendarGrid();
+            renderExpenses();
+            renderIncomes();
+        }
     }
 
     function toggleLanguage() {
@@ -448,6 +460,7 @@
         document.getElementById('btnPrint').innerText = i18n[currentLang].btnPrint;
         document.getElementById('btnSaveData').innerText = i18n[currentLang].btnSave;
         document.getElementById('btnSendEmail').innerText = i18n[currentLang].btnEmail;
+        document.getElementById('btnClearData').innerText = i18n[currentLang].btnClear;
         document.getElementById('txtHistoryTitle').innerText = i18n[currentLang].historyTitle;
         document.getElementById('incomeLabel').placeholder = i18n[currentLang].placeholderIncomeLabel;
         document.getElementById('expLabel').placeholder = i18n[currentLang].placeholderExpLabel;
@@ -458,7 +471,7 @@
         generateCalendarGrid();
         renderExpenses();
         renderIncomes();
-        if (SUPABASE_URL.includes('co')) loadHistoryFromSupabase();
+        loadHistoryFromSupabase();
     }
 
     function addIncome() {
@@ -468,18 +481,18 @@
         incomes.push({ label, val });
         document.getElementById('incomeLabel').value = '';
         document.getElementById('incomeVal').value = '';
+        saveStateToLocalStorage();
         renderIncomes();
-        saveDraftToLocalStorage();
         calculate();
     }
 
-    function removeIncome(index) { incomes.splice(index, 1); renderIncomes(); saveDraftToLocalStorage(); calculate(); }
+    function removeIncome(index) { incomes.splice(index, 1); saveStateToLocalStorage(); renderIncomes(); calculate(); }
 
     function renderIncomes() {
         const list = document.getElementById('incomeList');
         list.innerHTML = '';
         incomes.forEach((inc, i) => {
-            list.innerHTML += `<div class="list-item"><span>💰 ${inc.label}: <b>£${inc.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeIncome(${i})">×</span></div>`;
+            list.innerHTML += `<div class="list-item"><span>💰 \${inc.label}: <b>£\({inc.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeIncome(\){i})">×</span></div>`;
         });
     }
 
@@ -490,31 +503,31 @@
         expenses.push({ label, val });
         document.getElementById('expLabel').value = '';
         document.getElementById('expVal').value = '';
+        saveStateToLocalStorage();
         renderExpenses();
-        saveDraftToLocalStorage();
         calculate();
     }
 
-    function removeExpense(index) { expenses.splice(index, 1); renderExpenses(); saveDraftToLocalStorage(); calculate(); }
+    function removeExpense(index) { expenses.splice(index, 1); saveStateToLocalStorage(); renderExpenses(); calculate(); }
 
     function renderExpenses() {
         const list = document.getElementById('expenseList');
         list.innerHTML = '';
         expenses.forEach((exp, i) => {
-            list.innerHTML += `<div class="list-item"><span>💼 ${exp.label}: <b>£${exp.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeExpense(${i})">×</span></div>`;
+            list.innerHTML += `<div class="list-item"><span>💼 \${exp.label}: <b>£\({exp.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeExpense(\){i})">×</span></div>`;
         });
     }
 
     function calculate() {
         const activeBoxes = document.querySelectorAll('.day-btn.active').length;
         const trainCost = activeBoxes * 6.00;
-        document.getElementById('resDays').innerText = `${activeBoxes} ${i18n[currentLang].daysText} (£${trainCost.toFixed(2)})`;
+        document.getElementById('resDays').innerText = `\${activeBoxes} \({i18n[currentLang].daysText} (£\){trainCost.toFixed(2)})`;
         const totalReceipts = incomes.reduce((sum, inc) => sum + inc.val, 0);
         const totalExpenses = trainCost + expenses.reduce((sum, exp) => sum + exp.val, 0);
         const netProfit = totalReceipts - totalExpenses;
-        document.getElementById('resReceipts').innerText = `£${totalReceipts.toFixed(2)}`;
-        document.getElementById('resExpenses').innerText = `£${totalExpenses.toFixed(2)}`;
-        document.getElementById('resNet').innerText = `£${netProfit.toFixed(2)}`;
+        document.getElementById('resReceipts').innerText = `£\${totalReceipts.toFixed(2)}`;
+        document.getElementById('resExpenses').innerText = `£\${totalExpenses.toFixed(2)}`;
+        document.getElementById('resNet').innerText = `£\${netProfit.toFixed(2)}`;
     }
 
     async function saveToSupabase() {
@@ -536,11 +549,11 @@
         };
 
         try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/uc_reports`, {
+            const response = await fetch(`\${SUPABASE_URL}/rest/v1/uc_reports`, {
                 method: 'POST',
                 headers: {
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Authorization': `Bearer \${SUPABASE_KEY}`,
                     'Content-Type': 'application/json',
                     'Prefer': 'return=minimal'
                 },
@@ -549,19 +562,8 @@
 
             if (response.ok) { 
                 alert(i18n[currentLang].saveSuccess);
-                // Limpa o rascunho semanal após o envio final do mês completo
-                localStorage.removeItem('uc_weekly_active_days');
-                localStorage.removeItem('uc_weekly_incomes');
-                localStorage.removeItem('uc_weekly_expenses');
-                incomes = [];
-                expenses = [{ label: i18n[currentLang].defaultPhone, val: 7.00 }];
-                
-                generateCalendarGrid();
-                renderExpenses();
-                renderIncomes();
-                loadHistoryFromSupabase(); 
-            } 
-            else {
+                loadHistoryFromSupabase();
+            } else {
                 const errData = await response.json();
                 alert(i18n[currentLang].saveError + " " + (errData.message || response.statusText));
             }
@@ -571,11 +573,11 @@
     async function loadHistoryFromSupabase() {
         const container = document.getElementById('historyList');
         try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/uc_reports?order=created_at.desc`, {
+            const response = await fetch(`\${SUPABASE_URL}/rest/v1/uc_reports?order=created_at.desc`, {
                 method: 'GET',
                 headers: {
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                    'Authorization': `Bearer \${SUPABASE_KEY}`
                 }
             });
 
@@ -591,14 +593,14 @@
                     const formattedDate = dateObj.toLocaleDateString(currentLang === 'PT' ? 'pt-BR' : 'en-GB');
                     container.innerHTML += `
                         <div class="history-item">
-                            <span class="history-date">📅 ${formattedDate}</span>
-                            <span>🚂 ${item.train_days}d</span>
-                            <span class="history-profit">Profit: £${Number(item.net_profit).toFixed(2)}</span>
+                            <span class="history-date">📅 \${formattedDate}</span>
+                            <span>🚂 \${item.train_days}d</span>
+                            <span class="history-profit">Profit: £\${Number(item.net_profit).toFixed(2)}</span>
                         </div>
                     `;
                 });
-            } else { container.innerText = "History loading hidden."; }
-        } catch (err) { container.innerText = "Database offline."; }
+            } else { container.innerText = "Error loading history."; }
+        } catch (err) { container.innerText = "Connection error."; }
     }
 
     function generatePlainTextReport() {
@@ -608,4 +610,6 @@
         const totalExpenses = trainCost + expenses.reduce((sum, exp) => sum + exp.val, 0);
         const netProfit = totalReceipts - totalExpenses;
 
-        
+        let text = `📊 UC REPORT - UNIVERSAL CREDIT\n----------------------------------------\n`;
+        text += `🚂 \({i18n[currentLang].transportTitle}:\){activeBoxes} \({i18n[currentLang].daysText} = £\){trainCost.toFixed(2)}\n\n`;
+        text += `💰 \${i
