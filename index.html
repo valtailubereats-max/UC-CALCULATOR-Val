@@ -12,6 +12,9 @@
             --dark: #212529;
             --card-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
             --float-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+            --dayoff-bg: #e6f4ea;
+            --dayoff-border: #b7e1cd;
+            --dayoff-text: #137333;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -112,30 +115,49 @@
             gap: 8px;
             margin-top: 10px;
         }
+        /* Célula Padrão (Verde Clara) */
         .day-btn {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: #ffffff;
-            border: 1px solid #e9ecef;
-            padding: 10px 2px;
+            background: var(--dayoff-bg);
+            border: 1px solid var(--dayoff-border);
+            padding: 8px 2px;
             border-radius: 12px;
             cursor: pointer;
             box-shadow: var(--card-shadow);
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
         }
-        .day-btn .num { font-size: 18px; font-weight: 700; color: #2b2d42; }
-        .day-btn .month { font-size: 13px; font-weight: 600; text-transform: uppercase; color: #6c757d; margin-top: 2px; }
+        .day-btn .num { font-size: 18px; font-weight: 700; color: var(--dayoff-text); }
+        .day-btn .month { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--dayoff-text); opacity: 0.8; margin-top: 2px; }
         
-        .day-btn.active {
-            background: linear-gradient(135deg, var(--secondary), #f39c12);
-            border-color: transparent;
+        /* Estilo da Tarja Dinâmica para Dias no Passado */
+        .day-btn .tag {
+            display: none;
+            background-color: #137333;
             color: white;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 4px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            margin-top: 4px;
+            letter-spacing: 0.2px;
+        }
+        .day-btn.past-off .tag { display: block; }
+
+        /* Célula Ativada Manual (Laranja Flutuante) */
+        .day-btn.active {
+            background: linear-gradient(135deg, var(--secondary), #f39c12) !important;
+            border-color: transparent !important;
+            color: white !important;
             transform: translateY(-2px);
             box-shadow: 0 6px 12px rgba(255, 159, 67, 0.4);
         }
-        .day-btn.active .num, .day-btn.active .month { color: white; }
+        .day-btn.active .num, .day-btn.active .month { color: white !important; }
+        .day-btn.active .tag { display: none !important; }
 
         .list-item {
             background: var(--light);
@@ -169,14 +191,20 @@
         .btn-whatsapp { background-color: #25d366; box-shadow: 0 3px 6px rgba(37,211,102,0.3); }
         .btn-print { background-color: #4a5568; box-shadow: 0 3px 6px rgba(74,85,104,0.3); }
         .btn-save { background-color: #007bff; box-shadow: 0 3px 6px rgba(0,123,255,0.3); }
+        .btn-email { background-color: #dc3545; box-shadow: 0 3px 6px rgba(220,53,69,0.3); }
 
+        /* IMPRESSÃO COMPACTADA EM 55% PARA CABER EM UMA FOLHA */
         @media print {
-            @page { size: A4 portrait; margin: 10mm; }
-            body { background: white; padding: 0; zoom: 82%; }
+            @page { size: A4 portrait; margin: 8mm; }
+            body { background: white; padding: 0; zoom: 55% !important; }
             .container { box-shadow: none; max-width: 100%; padding: 0; margin: 0; }
             .action-area, .lang-btn, .remove-btn, button[type="button"] { display: none !important; }
             input, select { background: none !important; border: 1px solid #aaa !important; }
+            .day-btn { background: #e6f4ea !important; border-color: #b7e1cd !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .day-btn .num, .day-btn .month { color: #137333 !important; }
+            .day-btn .tag { background-color: #137333 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .day-btn.active { background: #ff9f43 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .day-btn.active .num, .day-btn.active .month { color: white !important; }
             .result-box { background: #e6f4ea !important; border-left: 6px solid #005a36 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
@@ -256,6 +284,7 @@
     <!-- BOTÕES DE AÇÃO -->
     <div class="action-area">
         <button class="btn-save" onclick="saveToSupabase()" id="btnSaveData">💾 Salvar no Banco de Dados</button>
+        <button class="btn-email" onclick="sendEmail()" id="btnSendEmail">📧 Enviar por E-mail</button>
         <div class="row">
             <button class="btn-whatsapp" onclick="sendWhatsApp()" id="btnSendWhatsapp">Enviar WhatsApp</button>
             <button class="btn-print" onclick="window.print()" id="btnPrint">Imprimir / PDF</button>
@@ -264,7 +293,6 @@
 </div>
 
 <script>
-    // Configurações reais do seu projeto Supabase
     const SUPABASE_URL = 'https://dmxfsdjwujbkrqokckur.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_fgDbSglGiTqbeVIj5kLVkA_YK98XfAz';
 
@@ -272,6 +300,11 @@
     let incomes = [];
     let expenses = [];
     
+    // Configura a data real de hoje: 14 de Maio de 2026
+    const todayYear = 2026;
+    const todayMonth = 4; // Maio no sistema Javascript (0-11)
+    const todayDay = 14;
+
     const i18n = {
         PT: {
             langLabel: "Português 🇧🇷", transportTitle: "Transporte (ida e volta)",
@@ -283,7 +316,8 @@
             netProfit: "Lucro Líquido Real:", btnWhatsapp: "Enviar WhatsApp", btnPrint: "Imprimir / PDF",
             defaultPhone: "Telefone / Internet Profissional", placeholderIncomeLabel: "Ex: Semana 15",
             placeholderExpLabel: "Ex: Telefone", daysText: "dias", month1: "Abr", month2: "Mai",
-            btnSave: "💾 Salvar no Banco de Dados", saveSuccess: "Dados salvos com sucesso no Supabase!", saveError: "Erro ao salvar os dados."
+            btnSave: "💾 Salvar no Banco de Dados", saveSuccess: "Dados salvos com sucesso no Supabase!", saveError: "Erro ao salvar os dados.",
+            btnEmail: "📧 Enviar por E-mail", emailSubject: "Relatório Universal Credit"
         },
         EN: {
             langLabel: "English 🇬🇧", transportTitle: "Transport (Return)",
@@ -295,7 +329,8 @@
             netProfit: "Estimated Net Profit:", btnWhatsapp: "Send WhatsApp", btnPrint: "Print / PDF",
             defaultPhone: "Business Phone / Internet", placeholderIncomeLabel: "Ex: Week 15",
             placeholderExpLabel: "Ex: Phone Bill", daysText: "days", month1: "Apr", month2: "May",
-            btnSave: "💾 Save to Database", saveSuccess: "Data successfully saved to Supabase!", saveError: "Error saving data."
+            btnSave: "💾 Save to Database", saveSuccess: "Data successfully saved to Supabase!", saveError: "Error saving data.",
+            btnEmail: "📧 Send via Email", emailSubject: "Universal Credit Report"
         }
     };
 
@@ -310,22 +345,39 @@
         const activeIds = Array.from(document.querySelectorAll('.day-btn.active')).map(el => el.id);
         grid.innerHTML = '';
         
-        for (let d = 15; d <= 31; d++) { 
-            grid.appendChild(createDayButton(d, i18n[currentLang].month1, `m1-${d}`, activeIds)); 
+        // Geração: 15 ao 30 de Abril de 2026
+        for (let d = 15; d <= 30; d++) { 
+            // Abril de 2026 está totalmente no passado em relação a 14 de maio de 2026
+            grid.appendChild(createDayButton(d, i18n[currentLang].month1, `m1-${d}`, activeIds, true)); 
         }
+        // Geração: 1 ao 14 de Maio de 2026
         for (let d = 1; d <= 14; d++) { 
-            grid.appendChild(createDayButton(d, i18n[currentLang].month2, `m2-${d}`, activeIds)); 
+            // Se o dia for menor que 14, ele está no passado
+            const isPast = d < todayDay;
+            grid.appendChild(createDayButton(d, i18n[currentLang].month2, `m2-${d}`, activeIds, isPast)); 
         }
         calculate();
     }
 
-    function createDayButton(day, monthName, id, activeIds) {
+    function createDayButton(day, monthName, id, activeIds, isPast) {
         const btn = document.createElement('div');
         btn.className = 'day-btn';
         btn.id = id;
-        btn.innerHTML = `<span class="num">${day}</span><span class="month">${monthName}</span>`;
-        if (activeIds.includes(id)) { btn.classList.add('active'); }
-        btn.onclick = () => { btn.classList.toggle('active'); calculate(); };
+        btn.innerHTML = `<span class="num">${day}</span><span class="month">${monthName}</span><span class="tag">Day Off</span>`;
+        
+        // Se for um dia no passado, ganha a marca de past-off estrutural
+        if (isPast) {
+            btn.classList.add('past-off');
+        }
+
+        if (activeIds.includes(id)) { 
+            btn.classList.add('active'); 
+        }
+        
+        btn.onclick = () => { 
+            btn.classList.toggle('active'); 
+            calculate(); 
+        };
         return btn;
     }
 
@@ -350,6 +402,7 @@
         document.getElementById('btnSendWhatsapp').innerText = i18n[currentLang].btnWhatsapp;
         document.getElementById('btnPrint').innerText = i18n[currentLang].btnPrint;
         document.getElementById('btnSaveData').innerText = i18n[currentLang].btnSave;
+        document.getElementById('btnSendEmail').innerText = i18n[currentLang].btnEmail;
         document.getElementById('incomeLabel').placeholder = i18n[currentLang].placeholderIncomeLabel;
         document.getElementById('expLabel').placeholder = i18n[currentLang].placeholderExpLabel;
 
@@ -415,7 +468,6 @@
         document.getElementById('resNet').innerText = `£${netProfit.toFixed(2)}`;
     }
 
-    // Processo de envio nativo (Sem scripts externos quebrados)
     async function saveToSupabase() {
         const activeBoxes = document.querySelectorAll('.day-btn.active').length;
         const trainCost = activeBoxes * 6.00;
@@ -457,25 +509,44 @@
         }
     }
 
-    function sendWhatsApp() {
+    function generatePlainTextReport() {
         const activeBoxes = document.querySelectorAll('.day-btn.active').length;
         const trainCost = activeBoxes * 6.00;
         const totalReceipts = incomes.reduce((sum, inc) => sum + inc.val, 0);
         const totalExpenses = trainCost + expenses.reduce((sum, exp) => sum + exp.val, 0);
         const netProfit = totalReceipts - totalExpenses;
 
-        let text = `*📊 UC REPORT - UNIVERSAL CREDIT*\n----------------------------------------\n`;
-        text += `*🚂 ${i18n[currentLang].transportTitle}:* ${activeBoxes} ${i18n[currentLang].daysText} = £${trainCost.toFixed(2)}\n\n`;
-        text += `*💰 ${i18n[currentLang].incomeTitle}:*\n`;
+        let text = `📊 UC REPORT - UNIVERSAL CREDIT\n`;
+        text += `----------------------------------------\n`;
+        text += `🚂 ${i18n[currentLang].transportTitle}:\n`;
+        text += `• ${activeBoxes} ${i18n[currentLang].daysText} = £${trainCost.toFixed(2)}\n\n`;
+        text += `💰 ${i18n[currentLang].incomeTitle}:\n`;
+        if(incomes.length === 0) text += `• None / Nenhum\n`;
         incomes.forEach(i => text += `• ${i.label}: £${i.val.toFixed(2)}\n`);
-        text += `\n*💼 ${i18n[currentLang].expenseTitle}:*\n• Train: £${trainCost.toFixed(2)}\n`;
+        text += `\n💼 ${i18n[currentLang].expenseTitle}:\n• Train: £${trainCost.toFixed(2)}\n`;
         expenses.forEach(e => text += `• ${e.label}: £${e.val.toFixed(2)}\n`);
-        text += `----------------------------------------\n*TOTAL RECEIPTS:* £${totalReceipts.toFixed(2)}\n*TOTAL EXPENSES:* £${totalExpenses.toFixed(2)}\n*NET PROFIT:* £${netProfit.toFixed(2)}\n`;
-        
-        window.open(`whatsapp.com{encodeURIComponent(text)}`, '_blank');
+        text += `----------------------------------------\n`;
+        text += `TOTAL RECEIPTS: £${totalReceipts.toFixed(2)}\n`;
+        text += `TOTAL EXPENSES: £${totalExpenses.toFixed(2)}\n`;
+        text += `NET PROFIT: £${netProfit.toFixed(2)}\n`;
+        return text;
+    }
+
+    function sendEmail() {
+        const bodyText = generatePlainTextReport();
+        const subject = i18n[currentLang].emailSubject;
+        // Abre o app de email padrão do celular imediatamente
+        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+    }
+
+    function sendWhatsApp() {
+        const text = generatePlainTextReport();
+        // Link alternativo usando wa.me para forçar o direcionamento em qualquer celular
+        window.open(`wa.me{encodeURIComponent(text)}`, '_blank');
     }
 
     window.onload = initApp;
 </script>
 </body>
 </html>
+
