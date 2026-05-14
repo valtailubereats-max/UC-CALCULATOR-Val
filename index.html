@@ -115,7 +115,6 @@
             gap: 8px;
             margin-top: 10px;
         }
-        /* Célula Padrão (Verde Clara) */
         .day-btn {
             display: flex;
             flex-direction: column;
@@ -133,7 +132,6 @@
         .day-btn .num { font-size: 18px; font-weight: 700; color: var(--dayoff-text); }
         .day-btn .month { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--dayoff-text); opacity: 0.8; margin-top: 2px; }
         
-        /* Estilo da Tarja Dinâmica para Dias no Passado */
         .day-btn .tag {
             display: none;
             background-color: #137333;
@@ -148,7 +146,6 @@
         }
         .day-btn.past-off .tag { display: block; }
 
-        /* Célula Ativada Manual (Laranja Flutuante) */
         .day-btn.active {
             background: linear-gradient(135deg, var(--secondary), #f39c12) !important;
             border-color: transparent !important;
@@ -193,7 +190,6 @@
         .btn-save { background-color: #007bff; box-shadow: 0 3px 6px rgba(0,123,255,0.3); }
         .btn-email { background-color: #dc3545; box-shadow: 0 3px 6px rgba(220,53,69,0.3); }
 
-        /* IMPRESSÃO COMPACTADA EM 55% PARA CABER EM UMA FOLHA */
         @media print {
             @page { size: A4 portrait; margin: 8mm; }
             body { background: white; padding: 0; zoom: 55% !important; }
@@ -300,9 +296,8 @@
     let incomes = [];
     let expenses = [];
     
-    // Configura a data real de hoje: 14 de Maio de 2026
     const todayYear = 2026;
-    const todayMonth = 4; // Maio no sistema Javascript (0-11)
+    const todayMonth = 4; 
     const todayDay = 14;
 
     const i18n = {
@@ -345,14 +340,10 @@
         const activeIds = Array.from(document.querySelectorAll('.day-btn.active')).map(el => el.id);
         grid.innerHTML = '';
         
-        // Geração: 15 ao 30 de Abril de 2026
         for (let d = 15; d <= 30; d++) { 
-            // Abril de 2026 está totalmente no passado em relação a 14 de maio de 2026
             grid.appendChild(createDayButton(d, i18n[currentLang].month1, `m1-${d}`, activeIds, true)); 
         }
-        // Geração: 1 ao 14 de Maio de 2026
         for (let d = 1; d <= 14; d++) { 
-            // Se o dia for menor que 14, ele está no passado
             const isPast = d < todayDay;
             grid.appendChild(createDayButton(d, i18n[currentLang].month2, `m2-${d}`, activeIds, isPast)); 
         }
@@ -365,19 +356,10 @@
         btn.id = id;
         btn.innerHTML = `<span class="num">${day}</span><span class="month">${monthName}</span><span class="tag">Day Off</span>`;
         
-        // Se for um dia no passado, ganha a marca de past-off estrutural
-        if (isPast) {
-            btn.classList.add('past-off');
-        }
-
-        if (activeIds.includes(id)) { 
-            btn.classList.add('active'); 
-        }
+        if (isPast) { btn.classList.add('past-off'); }
+        if (activeIds.includes(id)) { btn.classList.add('active'); }
         
-        btn.onclick = () => { 
-            btn.classList.toggle('active'); 
-            calculate(); 
-        };
+        btn.onclick = () => { btn.classList.toggle('active'); calculate(); };
         return btn;
     }
 
@@ -406,15 +388,10 @@
         document.getElementById('incomeLabel').placeholder = i18n[currentLang].placeholderIncomeLabel;
         document.getElementById('expLabel').placeholder = i18n[currentLang].placeholderExpLabel;
 
-       if (
-    expenses.length > 0 &&
-    (
-        expenses[0].label === i18n.PT.defaultPhone ||
-        expenses[0].label === i18n.EN.defaultPhone
-    )
-) {
-    expenses[0].label = i18n[currentLang].defaultPhone;
-}
+        // Correção de Bug do Array de Despesas corrigido aqui
+        if (expenses.length > 0 && (expenses[0].label === i18n.PT.defaultPhone || expenses[0].label === i18n.EN.defaultPhone)) {
+            expenses[0].label = i18n[currentLang].defaultPhone;
+        }
         generateCalendarGrid();
         renderExpenses();
         renderIncomes();
@@ -504,15 +481,12 @@
                 body: JSON.stringify(payload)
             });
 
-            if (response.ok) {
-                alert(i18n[currentLang].saveSuccess);
-            } else {
+            if (response.ok) { alert(i18n[currentLang].saveSuccess); } 
+            else {
                 const errData = await response.json();
                 alert(i18n[currentLang].saveError + " " + (errData.message || response.statusText));
             }
-        } catch (err) {
-            alert(i18n[currentLang].saveError + " " + err.message);
-        }
+        } catch (err) { alert(i18n[currentLang].saveError + " " + err.message); }
     }
 
     function generatePlainTextReport() {
@@ -522,42 +496,32 @@
         const totalExpenses = trainCost + expenses.reduce((sum, exp) => sum + exp.val, 0);
         const netProfit = totalReceipts - totalExpenses;
 
-        let text = `📊 UC REPORT - UNIVERSAL CREDIT\n`;
-        text += `----------------------------------------\n`;
-        text += `🚂 ${i18n[currentLang].transportTitle}:\n`;
-        text += `• ${activeBoxes} ${i18n[currentLang].daysText} = £${trainCost.toFixed(2)}\n\n`;
+        let text = `📊 UC REPORT - UNIVERSAL CREDIT\n----------------------------------------\n`;
+        text += `🚂 ${i18n[currentLang].transportTitle}: ${activeBoxes} ${i18n[currentLang].daysText} = £${trainCost.toFixed(2)}\n\n`;
         text += `💰 ${i18n[currentLang].incomeTitle}:\n`;
         if(incomes.length === 0) text += `• None / Nenhum\n`;
         incomes.forEach(i => text += `• ${i.label}: £${i.val.toFixed(2)}\n`);
         text += `\n💼 ${i18n[currentLang].expenseTitle}:\n• Train: £${trainCost.toFixed(2)}\n`;
         expenses.forEach(e => text += `• ${e.label}: £${e.val.toFixed(2)}\n`);
-        text += `----------------------------------------\n`;
-        text += `TOTAL RECEIPTS: £${totalReceipts.toFixed(2)}\n`;
-        text += `TOTAL EXPENSES: £${totalExpenses.toFixed(2)}\n`;
-        text += `NET PROFIT: £${netProfit.toFixed(2)}\n`;
+        text += `----------------------------------------\nTOTAL RECEIPTS: £${totalReceipts.toFixed(2)}\nTOTAL EXPENSES: £${totalExpenses.toFixed(2)}\nNET PROFIT: £${netProfit.toFixed(2)}\n`;
         return text;
     }
 
+    // Correções de Máxima Compatibilidade para iOS/Safari integradas aqui
     function sendEmail() {
-    const bodyText = generatePlainTextReport();
-    const subject = i18n[currentLang].emailSubject;
-
-    const mailtoLink =
-        `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
-
-    window.open(mailtoLink, '_self');
-}
+        const bodyText = generatePlainTextReport();
+        const subject = i18n[currentLang].emailSubject;
+        const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+        window.location.href = mailtoLink;
+    }
 
     function sendWhatsApp() {
-    const text = generatePlainTextReport();
+        const text = generatePlainTextReport();
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        window.location.href = url;
+    }
 
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-
-    window.location.href = url;
-}
-
-  window.onload = initApp;
+    window.onload = initApp;
 </script>
 </body>
 </html>
-
