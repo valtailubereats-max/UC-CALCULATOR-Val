@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UC CALCULATOR</title>
-    <!-- Importação corrigida e estável do Supabase via CDN -->
-    <script src="jsdelivr.net"></script>
     <style>
         :root {
             --primary: #005a36;
@@ -266,10 +264,9 @@
 </div>
 
 <script>
-    // --- SUAS CHAVES DO SUPABASE VERIFICADAS ---
+    // Configurações reais do seu projeto Supabase
     const SUPABASE_URL = 'https://dmxfsdjwujbkrqokckur.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_fgDbSglGiTqbeVIj5kLVkA_YK98XfAz';
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentLang = 'PT';
     let incomes = [];
@@ -350,7 +347,7 @@
         document.getElementById('lblTotalReceipts').innerText = i18n[currentLang].totalReceipts;
         document.getElementById('lblTotalExpenses').innerText = i18n[currentLang].totalExpenses;
         document.getElementById('lblNetProfit').innerText = i18n[currentLang].netProfit;
-        document.getElementById('btnSendWhatsApp').innerText = i18n[currentLang].btnWhatsapp;
+        document.getElementById('btnSendWhatsapp').innerText = i18n[currentLang].btnWhatsapp;
         document.getElementById('btnPrint').innerText = i18n[currentLang].btnPrint;
         document.getElementById('btnSaveData').innerText = i18n[currentLang].btnSave;
         document.getElementById('incomeLabel').placeholder = i18n[currentLang].placeholderIncomeLabel;
@@ -418,6 +415,7 @@
         document.getElementById('resNet').innerText = `£${netProfit.toFixed(2)}`;
     }
 
+    // Processo de envio nativo (Sem scripts externos quebrados)
     async function saveToSupabase() {
         const activeBoxes = document.querySelectorAll('.day-btn.active').length;
         const trainCost = activeBoxes * 6.00;
@@ -425,23 +423,37 @@
         const totalExpenses = trainCost + expenses.reduce((sum, exp) => sum + exp.val, 0);
         const netProfit = totalReceipts - totalExpenses;
 
-        const { data, error } = await _supabase
-            .from('uc_reports')
-            .insert([{
-                language: currentLang,
-                train_days: activeBoxes,
-                train_cost: trainCost,
-                total_receipts: totalReceipts,
-                total_expenses: totalExpenses,
-                net_profit: netProfit,
-                income_details: incomes,
-                expense_details: expenses
-            }]);
+        const payload = {
+            language: currentLang,
+            train_days: activeBoxes,
+            train_cost: trainCost,
+            total_receipts: totalReceipts,
+            total_expenses: totalExpenses,
+            net_profit: netProfit,
+            income_details: incomes,
+            expense_details: expenses
+        };
 
-        if (error) {
-            alert(i18n[currentLang].saveError + " " + error.message);
-        } else {
-            alert(i18n[currentLang].saveSuccess);
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/uc_reports`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                alert(i18n[currentLang].saveSuccess);
+            } else {
+                const errData = await response.json();
+                alert(i18n[currentLang].saveError + " " + (errData.message || response.statusText));
+            }
+        } catch (err) {
+            alert(i18n[currentLang].saveError + " " + err.message);
         }
     }
 
@@ -460,7 +472,6 @@
         expenses.forEach(e => text += `• ${e.label}: £${e.val.toFixed(2)}\n`);
         text += `----------------------------------------\n*TOTAL RECEIPTS:* £${totalReceipts.toFixed(2)}\n*TOTAL EXPENSES:* £${totalExpenses.toFixed(2)}\n*NET PROFIT:* £${netProfit.toFixed(2)}\n`;
         
-        // Link API universal corrigido para WhatsApp Mobile e Desktop
         window.open(`whatsapp.com{encodeURIComponent(text)}`, '_blank');
     }
 
