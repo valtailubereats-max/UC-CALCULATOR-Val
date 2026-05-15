@@ -109,7 +109,7 @@
     <div class="section">
         <h3 id="txtIncomeTitle">Ganhos Recebidos</h3>
         <div class="row">
-            <div style="flex: 2;"><label id="lblSource">Origem</label><input type="text" id="incomeLabel" placeholder="Ex: Semana 15"></div>
+            <div style="flex: 2;"><label id="lblSource">Origem</label><input type="text" id="incomeLabel" placeholder="Ex: Semana 15" value="WEEK"></div>
             <div style="flex: 1;"><label id="lblAmount1">Valor (£)</label><input type="number" id="incomeVal" step="0.01" placeholder="0.00"></div>
         </div>
         <button type="button" id="btnAddIncome" onclick="addIncome()">+ Adicionar</button>
@@ -189,10 +189,62 @@ let settings = {
 };
 
 let currentLang = 'PT';
-let incomes = [];
-let expenses = [];
 let currentBaseDate = new Date(2026, 3, 15);
-let selectedDaysSet = new Set();
+
+// ==================== PERSISTÊNCIA POR PERÍODO ====================
+// Estrutura: { "periodKey": { selectedDays: Set, incomes: Array, expenses: Array } }
+let periodData = new Map();
+
+function getPeriodKey(date) {
+    const start = new Date(date.getFullYear(), date.getMonth(), 15);
+    const end = new Date(date.getFullYear(), date.getMonth() + 1, 14);
+    return `${start.toISOString().split('T')[0]}_${end.toISOString().split('T')[0]}`;
+}
+
+function getCurrentPeriodKey() {
+    return getPeriodKey(currentBaseDate);
+}
+
+function loadPeriodData() {
+    const key = getCurrentPeriodKey();
+    const data = periodData.get(key);
+    if (data) {
+        return {
+            selectedDays: new Set(data.selectedDays || []),
+            incomes: data.incomes ? [...data.incomes] : [],
+            expenses: data.expenses ? [...data.expenses] : []
+        };
+    }
+    return { selectedDays: new Set(), incomes: [], expenses: [] };
+}
+
+function saveCurrentPeriodData(selectedDaysSet, incomesArray, expensesArray) {
+    const key = getCurrentPeriodKey();
+    periodData.set(key, {
+        selectedDays: Array.from(selectedDaysSet),
+        incomes: [...incomesArray],
+        expenses: [...expensesArray]
+    });
+}
+
+// Variáveis atuais (carregadas do período)
+let currentSelectedDays = new Set();
+let currentIncomes = [];
+let currentExpenses = [];
+
+function syncWithPeriod() {
+    const data = loadPeriodData();
+    currentSelectedDays = new Set(data.selectedDays);
+    currentIncomes = [...data.incomes];
+    currentExpenses = [...data.expenses];
+    renderIncomes();
+    renderExpenses();
+    renderCalendar();
+}
+
+function saveCurrentPeriod() {
+    saveCurrentPeriodData(currentSelectedDays, currentIncomes, currentExpenses);
+}
 
 // ==================== TRADUÇÕES ====================
 const translations = {
@@ -218,7 +270,6 @@ const translations = {
     }
 };
 
-// Função de tradução - atualiza todos os textos do app
 function updateLanguage() {
     const t = translations[currentLang];
     document.getElementById('txtTransportTitle').innerText = t.transportTitle;
@@ -242,38 +293,36 @@ function updateLanguage() {
     document.getElementById('btnPrev').innerText = t.prevMonth;
     document.getElementById('btnNext').innerText = t.nextMonth;
     
-    // Placeholders
     document.getElementById('incomeLabel').placeholder = currentLang === 'PT' ? "Ex: Semana 15" : "Ex: Week 15";
     document.getElementById('expLabel').placeholder = currentLang === 'PT' ? "Ex: Telefone" : "Ex: Phone";
     
-    if (expenses.length === 0) expenses = [{ label: t.defaultPhone, val: 7.00 }];
-    else if (expenses[0] && (expenses[0].label === "Telefone/Internet" || expenses[0].label === "Phone/Internet")) 
-        expenses[0].label = t.defaultPhone;
+    // Atualizar despesa padrão se necessário
+    if (currentExpenses.length === 0) {
+        currentExpenses = [{ label: t.defaultPhone, val: 7.00 }];
+        saveCurrentPeriod();
+    } else if (currentExpenses[0] && (currentExpenses[0].label === "Telefone/Internet" || currentExpenses[0].label === "Phone/Internet")) {
+        currentExpenses[0].label = t.defaultPhone;
+        saveCurrentPeriod();
+    }
     
-    renderCalendar();
     renderIncomes();
     renderExpenses();
+    renderCalendar();
 }
 
-// Função chamada pelo ícone de tradução
 function toggleLanguage() { 
     currentLang = currentLang === 'PT' ? 'EN' : 'PT'; 
     updateLanguage();
-    // Atualiza o ícone da bandeira para o idioma atual (apenas visual, não funcional de clique)
     document.getElementById('langIcon').innerText = currentLang === 'PT' ? '🇧🇷' : '🇬🇧';
 }
 
 // ==================== CALENDÁRIO ====================
-// Função que calcula o número da semana baseado na data, começando em W16 para o período de Abril
-function getWeekNumberDisplay(date, baseDate) {
+function getWeekNumberDisplay(date) {
     const d = new Date(date);
     d.setHours(0,0,0);
-    // Encontrar o domingo da semana
     const sunday = new Date(d);
     sunday.setDate(d.getDate() - d.getDay());
-    
-    // Data base para referência: 15 de Abril de 2026 é o início do período W16
-    const referenceDate = new Date(2026, 3, 12); // 12 de Abril de 2026 é domingo da semana W16
+    const referenceDate = new Date(2026, 3, 12);
     const diffDays = Math.floor((sunday - referenceDate) / (24 * 60 * 60 * 1000));
     const weekOffset = Math.floor(diffDays / 7);
     return 16 + weekOffset;
@@ -329,7 +378,7 @@ function renderCalendar() {
     weeks.forEach(weekDays => {
         const weekRow = document.createElement('div');
         weekRow.className = 'week-row';
-        let weekNumber = weekDays[0] ? getWeekNumberDisplay(weekDays[0].date, currentBaseDate) : 16;
+        let weekNumber = weekDays[0] ? getWeekNumberDisplay(weekDays[0].date) : 16;
         
         for (let i = 0; i < 7; i++) {
             const day = weekDays[i];
@@ -344,9 +393,9 @@ function renderCalendar() {
                 btn.id = day.id;
                 btn.style.backgroundColor = bgColor;
                 btn.innerHTML = `<span class="num">${day.dayNum}</span><span class="month">${day.month}</span>`;
-                if (selectedDaysSet.has(day.id)) btn.classList.add('active');
+                if (currentSelectedDays.has(day.id)) btn.classList.add('active');
                 if (day.isInTransportPeriod) {
-                    btn.onclick = (function(id) { return function() { this.classList.toggle('active'); if (this.classList.contains('active')) selectedDaysSet.add(id); else selectedDaysSet.delete(id); calculateAndUpdate(); }; })(day.id);
+                    btn.onclick = (function(id) { return function() { this.classList.toggle('active'); if (this.classList.contains('active')) currentSelectedDays.add(id); else currentSelectedDays.delete(id); saveCurrentPeriod(); calculateAndUpdate(); }; })(day.id);
                 } else { btn.style.cursor = 'default'; btn.onclick = null; }
                 weekRow.appendChild(btn);
             }
@@ -354,7 +403,7 @@ function renderCalendar() {
         
         const weekCell = document.createElement('div');
         weekCell.className = 'week-cell';
-        let weekCount = weekDays.filter(d => d && d.isInTransportPeriod && selectedDaysSet.has(d.id)).length;
+        let weekCount = weekDays.filter(d => d && d.isInTransportPeriod && currentSelectedDays.has(d.id)).length;
         weekCell.innerHTML = `<div class="week-number">W${weekNumber}</div><div class="week-count">${weekCount}</div>`;
         weekRow.appendChild(weekCell);
         grid.appendChild(weekRow);
@@ -365,65 +414,76 @@ function renderCalendar() {
 function calculateAndUpdate() {
     const transportDates = getTransportPeriodDates(currentBaseDate);
     let activeBoxes = 0;
-    selectedDaysSet.forEach(dayId => {
+    currentSelectedDays.forEach(dayId => {
         const parts = dayId.split('-');
         const d = new Date(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
         if (d >= transportDates.start && d <= transportDates.end) activeBoxes++;
     });
     const trainCost = activeBoxes * settings.trainPrice;
     document.getElementById('resDays').innerText = `${activeBoxes} ${translations[currentLang].daysText} (£${trainCost.toFixed(2)})`;
-    const totalReceipts = incomes.reduce((s, i) => s + i.val, 0);
-    const totalExpenses = trainCost + expenses.reduce((s, e) => s + e.val, 0);
+    const totalReceipts = currentIncomes.reduce((s, i) => s + i.val, 0);
+    const totalExpenses = trainCost + currentExpenses.reduce((s, e) => s + e.val, 0);
     document.getElementById('resReceipts').innerText = `£${totalReceipts.toFixed(2)}`;
     document.getElementById('resExpenses').innerText = `£${totalExpenses.toFixed(2)}`;
     document.getElementById('resNet').innerText = `£${(totalReceipts - totalExpenses).toFixed(2)}`;
 }
 
-function previousMonth() { currentBaseDate.setMonth(currentBaseDate.getMonth() - 1); renderCalendar(); }
-function nextMonth() { currentBaseDate.setMonth(currentBaseDate.getMonth() + 1); renderCalendar(); }
+function previousMonth() { 
+    saveCurrentPeriod();
+    currentBaseDate.setMonth(currentBaseDate.getMonth() - 1); 
+    syncWithPeriod();
+}
+function nextMonth() { 
+    saveCurrentPeriod();
+    currentBaseDate.setMonth(currentBaseDate.getMonth() + 1); 
+    syncWithPeriod();
+}
 
 // ==================== DADOS ====================
 function addIncome() {
-    const label = document.getElementById('incomeLabel').value.trim() || (currentLang === 'PT' ? "Ganho" : "Income");
+    let label = document.getElementById('incomeLabel').value.trim();
+    if (!label) label = currentLang === 'PT' ? "WEEK" : "WEEK";
     const val = parseFloat(document.getElementById('incomeVal').value);
     if (isNaN(val) || val <= 0) return alert(currentLang === 'PT' ? "Valor inválido" : "Invalid value");
-    incomes.push({ label, val });
-    document.getElementById('incomeLabel').value = '';
+    currentIncomes.push({ label, val });
     document.getElementById('incomeVal').value = '';
+    document.getElementById('incomeLabel').value = "WEEK";
+    saveCurrentPeriod();
     renderIncomes();
     calculateAndUpdate();
 }
-function removeIncome(i) { incomes.splice(i,1); renderIncomes(); calculateAndUpdate(); }
-function renderIncomes() { document.getElementById('incomeList').innerHTML = incomes.map((inc,i) => `<div class="list-item"><span>💰 ${inc.label}: <b>£${inc.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeIncome(${i})">×</span></div>`).join(''); }
+function removeIncome(i) { currentIncomes.splice(i,1); saveCurrentPeriod(); renderIncomes(); calculateAndUpdate(); }
+function renderIncomes() { document.getElementById('incomeList').innerHTML = currentIncomes.map((inc,i) => `<div class="list-item"><span>💰 ${inc.label}: <b>£${inc.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeIncome(${i})">×</span></div>`).join(''); }
 function addExpense() {
     const label = document.getElementById('expLabel').value.trim();
     const val = parseFloat(document.getElementById('expVal').value);
     if (!label || isNaN(val) || val <= 0) return alert(currentLang === 'PT' ? "Preencha os campos" : "Invalid fields");
-    expenses.push({ label, val });
+    currentExpenses.push({ label, val });
     document.getElementById('expLabel').value = '';
     document.getElementById('expVal').value = '';
+    saveCurrentPeriod();
     renderExpenses();
     calculateAndUpdate();
 }
-function removeExpense(i) { expenses.splice(i,1); renderExpenses(); calculateAndUpdate(); }
-function renderExpenses() { document.getElementById('expenseList').innerHTML = expenses.map((exp,i) => `<div class="list-item"><span>💼 ${exp.label}: <b>£${exp.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeExpense(${i})">×</span></div>`).join(''); }
+function removeExpense(i) { currentExpenses.splice(i,1); saveCurrentPeriod(); renderExpenses(); calculateAndUpdate(); }
+function renderExpenses() { document.getElementById('expenseList').innerHTML = currentExpenses.map((exp,i) => `<div class="list-item"><span>💼 ${exp.label}: <b>£${exp.val.toFixed(2)}</b></span><span class="remove-btn" onclick="removeExpense(${i})">×</span></div>`).join(''); }
 
 // ==================== AÇÕES ====================
 function generateReport() {
     const transport = getTransportPeriodDates(currentBaseDate);
     let activeBoxes = 0;
-    selectedDaysSet.forEach(dayId => {
+    currentSelectedDays.forEach(dayId => {
         const parts = dayId.split('-');
         const d = new Date(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
         if (d >= transport.start && d <= transport.end) activeBoxes++;
     });
     const trainCost = activeBoxes * settings.trainPrice;
-    const receipts = incomes.reduce((s,i) => s + i.val,0);
-    const expensesTotal = trainCost + expenses.reduce((s,e) => s + e.val,0);
+    const receipts = currentIncomes.reduce((s,i) => s + i.val,0);
+    const expensesTotal = trainCost + currentExpenses.reduce((s,e) => s + e.val,0);
     let txt = `📊 UC REPORT\nPeriod: ${transport.start.toLocaleDateString()} - ${transport.end.toLocaleDateString()}\nTrain days: ${activeBoxes} = £${trainCost}\nIncome:\n`; 
-    incomes.forEach(i => txt += `- ${i.label}: £${i.val}\n`);
+    currentIncomes.forEach(i => txt += `- ${i.label}: £${i.val}\n`);
     txt += `Expenses:\n- Train: £${trainCost}\n`; 
-    expenses.forEach(e => txt += `- ${e.label}: £${e.val}\n`);
+    currentExpenses.forEach(e => txt += `- ${e.label}: £${e.val}\n`);
     txt += `Total Receipts: £${receipts}\nTotal Expenses: £${expensesTotal}\nNet: £${(receipts - expensesTotal).toFixed(2)}`;
     return txt;
 }
@@ -445,10 +505,7 @@ function applySettings() {
     document.getElementById('nextColorPreview').style.backgroundColor = settings.nextPeriodColor;
     renderCalendar();
 }
-function savePanelSettings() {
-    localStorage.setItem('uc_calculator_settings', JSON.stringify(settings));
-    applySettings();
-}
+function savePanelSettings() { localStorage.setItem('uc_calculator_settings', JSON.stringify(settings)); applySettings(); }
 function resetAllSettings() {
     settings = { cellWidth: 41, currentPeriodColor: "#e6f4ea", prevPeriodColor: "#e0f0ff", nextPeriodColor: "#ffe6e6", trainPrice: 6.00 };
     savePanelSettings();
@@ -472,9 +529,17 @@ document.getElementById('langIcon').addEventListener('click', openPanel);
 function init() {
     const saved = localStorage.getItem('uc_calculator_settings');
     if (saved) { try { Object.assign(settings, JSON.parse(saved)); } catch(e) {} }
-    expenses = [{ label: translations.PT.defaultPhone, val: 7.00 }];
+    
+    // Inicializar período atual com dados padrão se vazio
+    const initialData = loadPeriodData();
+    if (initialData.expenses.length === 0) {
+        currentExpenses = [{ label: translations.PT.defaultPhone, val: 7.00 }];
+        saveCurrentPeriod();
+    }
+    
     applySettings();
     updateLanguage();
+    syncWithPeriod();
 }
 window.onload = init;
 </script>
